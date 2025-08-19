@@ -1,0 +1,49 @@
+services:
+  mysqldb:
+    deploy:
+    image: mysql:8.0.30
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-db-data:/var/lib/mysql
+    restart: always
+    networks:
+      - spring-backend-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7.4.2
+    ports:
+      - "6379:6379" # only for host machine communication.
+    networks:
+      - spring-backend-network
+
+  spring-ai:
+    build: .
+    container_name: spring-ai-container
+    restart: on-failure
+    environment:
+      MYSQL_HOST: mysqldb
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    networks:
+      - spring-backend-network
+
+networks:
+  spring-backend-network:
+    driver: bridge
